@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Create</title>
+<style>
+  :root { --bg:#101012; --panel:#1b1b1f; --field:#26262b; --line:#2f2f35; --text:#f2f2f2; --muted:#9a9aa2; --accent:#fff; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; background:var(--bg); color:var(--text); font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif; display:flex; justify-content:center; padding:24px 16px; }
+  .panel { width:100%; max-width:600px; background:var(--panel); border-radius:18px; padding:0 20px 20px; }
+  .tabs { display:flex; border-bottom:1px solid var(--line); }
+  .tabs button { flex:1; background:none; border:0; color:var(--muted); font:inherit; font-size:20px; padding:20px 0 16px; cursor:pointer; border-bottom:2px solid transparent; }
+  .tabs button[aria-selected=true] { color:var(--text); border-bottom-color:var(--accent); }
+  .tabs button:disabled { cursor:not-allowed; }
+  .row { display:flex; justify-content:space-between; align-items:center; margin:18px 0; gap:12px; }
+  .seg { display:flex; background:var(--field); border-radius:999px; padding:4px; }
+  .seg button { background:none; border:0; color:var(--text); font:inherit; padding:8px 12px; border-radius:999px; cursor:pointer; }
+  .seg button[aria-pressed=true] { background:#3a3a41; }
+  select { background:none; color:var(--text); border:1px solid var(--line); border-radius:999px; padding:9px 14px; font:inherit; }
+  select option { background:var(--panel); }
+  .chips { display:flex; background:var(--field); border-radius:999px; overflow:hidden; margin-bottom:22px; }
+  .chips button { flex:1; background:none; border:0; border-right:1px solid var(--line); color:var(--text); font:inherit; padding:16px 0; opacity:.45; cursor:not-allowed; }
+  .chips button:last-child { border-right:0; }
+  .box { background:var(--field); border-radius:16px; padding:14px 16px; margin-bottom:14px; }
+  .box label { display:block; color:var(--muted); font-size:13px; margin-bottom:6px; }
+  textarea, input[type=text] { width:100%; background:none; border:0; color:var(--text); font:inherit; resize:vertical; outline:none; }
+  textarea::placeholder, input::placeholder { color:var(--muted); }
+  .opts { display:flex; justify-content:space-between; align-items:center; color:var(--muted); margin:6px 2px 18px; gap:12px; flex-wrap:wrap; }
+  .opts label { display:flex; align-items:center; gap:8px; cursor:pointer; }
+  .opts input[type=number] { width:64px; background:var(--field); border:0; color:var(--text); border-radius:8px; padding:6px 8px; font:inherit; }
+  .create { width:100%; border:0; border-radius:999px; padding:18px; font:inherit; font-size:20px; background:var(--accent); color:#111; cursor:pointer; }
+  .create:disabled { background:#2b2b30; color:var(--muted); cursor:not-allowed; }
+  .err { color:#ff8a7a; margin:12px 4px 0; min-height:1em; }
+  .song { display:flex; flex-direction:column; gap:8px; padding:14px 0; border-top:1px solid var(--line); }
+  .song b { font-weight:600; }
+  .song small { color:var(--muted); }
+  .song audio { width:100%; }
+  [hidden] { display:none !important; }
+  :focus-visible { outline:2px solid #8ab4ff; outline-offset:2px; }
+</style>
+</head>
+<body>
+<main class="panel">
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true">Songs</button>
+    <button role="tab" aria-selected="false" disabled title="Non disponible ici">Speech</button>
+  </div>
+
+  <div class="row">
+    <div class="seg">
+      <button id="simple" aria-pressed="true">Simple</button>
+      <button id="advanced" aria-pressed="false">Advanced</button>
+    </div>
+    <select id="model" aria-label="Modèle">
+      <option value="music_v2_5">music v2.5</option>
+      <option value="music_v2">music v2</option>
+      <option value="music_v1">music v1</option>
+    </select>
+  </div>
+
+  <!-- shortcut: l'API Eleven Music n'accepte pas de son, voix ni image de référence ; boutons inactifs, à brancher si une API le permet -->
+  <div class="chips">
+    <button disabled title="Non pris en charge par l'API">+ Audio</button>
+    <button disabled title="Non pris en charge par l'API">+ Voice</button>
+    <button disabled title="Non pris en charge par l'API">+ Image</button>
+  </div>
+
+  <div id="simpleFields">
+    <div class="box">
+      <textarea id="prompt" rows="6" placeholder="Décris la chanson que tu veux : style, ambiance, voix, sujet…"></textarea>
+    </div>
+  </div>
+
+  <div id="advancedFields" hidden>
+    <div class="box"><label for="lyrics">Paroles</label><textarea id="lyrics" rows="7" placeholder="Écris tes paroles, ou coche Instrumental"></textarea></div>
+    <div class="box"><label for="style">Styles</label><input id="style" type="text" placeholder="techno, kick lourd, voix masculine scandée…"></div>
+    <div class="box"><label for="title">Titre</label><input id="title" type="text" placeholder="Titre du morceau (facultatif)"></div>
+  </div>
+
+  <div class="opts">
+    <label><input id="instrumental" type="checkbox"> Instrumental</label>
+    <label>Durée <input id="seconds" type="number" min="3" max="600" value="60"> s</label>
+  </div>
+
+  <button id="create" class="create" disabled>Create</button>
+  <p id="err" class="err" role="status"></p>
+
+  <section id="songs" aria-label="Morceaux créés"></section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+let mode = 'simple';
+
+function setMode(m) {
+  mode = m;
+  $('simple').setAttribute('aria-pressed', m === 'simple');
+  $('advanced').setAttribute('aria-pressed', m === 'advanced');
+  $('simpleFields').hidden = m !== 'simple';
+  $('advancedFields').hidden = m !== 'advanced';
+  refresh();
+}
+
+// Create s'active dès qu'il y a de quoi composer, comme chez Suno
+function refresh() {
+  const ready = mode === 'simple'
+    ? $('prompt').value.trim()
+    : $('style').value.trim() || ($('lyrics').value.trim() && !$('instrumental').checked) || $('instrumental').checked;
+  $('create').disabled = !ready;
+}
+
+$('simple').onclick = () => setMode('simple');
+$('advanced').onclick = () => setMode('advanced');
+['prompt', 'lyrics', 'style', 'instrumental'].forEach(id => $(id).addEventListener('input', refresh));
+
+$('create').onclick = async () => {
+  const btn = $('create');
+  btn.disabled = true; btn.textContent = 'Création…'; $('err').textContent = '';
+  try {
+    const r = await fetch('/api/create', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        mode, model: $('model').value, prompt: $('prompt').value, lyrics: $('lyrics').value,
+        style: $('style').value, title: $('title').value,
+        instrumental: $('instrumental').checked, seconds: $('seconds').value,
+      }),
+    });
+    const s = await r.json();
+    if (!r.ok) throw new Error(s.error);
+    const el = document.createElement('article');
+    el.className = 'song';
+    el.innerHTML = '<b></b><small></small><audio controls></audio>';
+    el.querySelector('b').textContent = s.title;
+    el.querySelector('small').textContent = `${s.model} · ${s.seconds} s · ${s.prompt.slice(0, 90)}`;
+    el.querySelector('audio').src = s.url;
+    $('songs').prepend(el);
+  } catch (e) {
+    $('err').textContent = e.message;
+  } finally {
+    btn.textContent = 'Create'; refresh();
+  }
+};
+</script>
+</body>
+</html>
