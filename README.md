@@ -1,19 +1,20 @@
 # suno-create
 
-Panneau « Create » inspiré de Suno (modes Simple et Advanced), branché gratuitement sur
-[ACE-Step](https://huggingface.co/spaces/ACE-Step/ACE-Step), un modèle de musique open source,
-via son Space Hugging Face.
+Panneau « Create » inspiré de Suno (modes Simple et Advanced), qui génère de la musique gratuitement avec
+[ACE-Step](https://huggingface.co/spaces/ACE-Step/ACE-Step), un modèle open source, via son Space Hugging Face.
+
+**En ligne : https://augustinmarso.github.io/suno-create/**
 
 - **Simple** : la description sert de style ; le morceau est instrumental.
 - **Advanced** : styles + paroles (balises `[verse]`, `[chorus]`, `[bridge]`) pour un morceau chanté.
-- Durée de 3 à 240 s. Les morceaux sont enregistrés dans `songs/`.
+- Durée de 3 à 240 s. Comptez 20 s à 3 min par morceau selon l'affluence sur le Space.
 
-## Lancer
+Page statique d'un seul fichier (`index.html`) : le navigateur appelle directement le Space avec
+`@gradio/client`. Aucun serveur ni clé d'API. Le quota GPU gratuit de Hugging Face peut être épuisé
+aux heures chargées : réessayer plus tard.
+
+## En local
 
 ```bash
-npm install
-npm start            # http://localhost:5340
+python -m http.server 5340
 ```
-
-Facultatif : `HF_TOKEN=…` dans `.env.local` (jeton Hugging Face en lecture) donne un quota GPU
-plus large que l'accès anonyme. Le serveur n'écoute que sur 127.0.0.1.

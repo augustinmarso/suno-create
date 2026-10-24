@@ -36,6 +36,7 @@
   .song b { font-weight:600; }
   .song small { color:var(--muted); }
   .song audio { width:100%; }
+  .song a { color:var(--muted); font-size:13px; }
   [hidden] { display:none !important; }
   :focus-visible { outline:2px solid #8ab4ff; outline-offset:2px; }
 </style>
@@ -87,7 +88,14 @@
   <section id="songs" aria-label="Morceaux créés"></section>
 </main>
 
-<script>
+<script type="module">
+// Page autonome : le navigateur appelle directement ACE-Step (modèle open source) sur son Space Hugging Face.
+import { Client } from 'https://cdn.jsdelivr.net/npm/@gradio/client@2.7.1/dist/browser.js';
+
+const SPACE = 'ACE-Step/ACE-Step';
+let space; // connexion au Space réutilisée entre les créations
+const connect = () => (space ||= Client.connect(SPACE).catch(e => { space = null; throw e; }));
+
 const $ = id => document.getElementById(id);
 let mode = 'simple';
 
@@ -115,22 +123,30 @@ $('create').onclick = async () => {
   const btn = $('create');
   btn.disabled = true; btn.textContent = 'Création… (1 à 3 min)'; $('err').textContent = '';
   try {
-    const r = await fetch('/api/create', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        mode, model: $('model').value, prompt: $('prompt').value, lyrics: $('lyrics').value,
-        style: $('style').value, title: $('title').value,
-        instrumental: $('instrumental').checked, seconds: $('seconds').value,
-      }),
-    });
-    const s = await r.json();
-    if (!r.ok) throw new Error(s.error);
+    // ACE-Step sépare le style (tags) des paroles ; [inst] = morceau sans voix.
+    // Simple : la description sert de style, sans paroles. Advanced : styles + paroles.
+    const tags = (mode === 'advanced' ? $('style').value : $('prompt').value).trim();
+    const lyrics = mode === 'advanced' && !$('instrumental').checked && $('lyrics').value.trim() ? $('lyrics').value : '[inst]';
+    if (tags.length + lyrics.length > 4100) throw new Error('Texte trop long (4100 caractères max).');
+    const seconds = Math.min(240, Math.max(3, Number($('seconds').value) || 30));
+
+    let file;
+    try {
+      const result = await (await connect()).predict('/__call__', { audio_duration: seconds, prompt: tags, lyrics });
+      file = result.data[0];
+    } catch (e) {
+      // quota GPU gratuit épuisé, Space en veille ou surchargé : le message de Gradio le dit
+      throw new Error(`ACE-Step : ${e.message || e.title || 'génération impossible, réessaie dans un moment.'}`);
+    }
+
+    const title = $('title').value.trim() || tags.split(/[.,\n]/)[0].slice(0, 40);
     const el = document.createElement('article');
     el.className = 'song';
-    el.innerHTML = '<b></b><small></small><audio controls></audio>';
-    el.querySelector('b').textContent = s.title;
-    el.querySelector('small').textContent = `${s.model} · ${s.seconds} s · ${s.prompt.slice(0, 90)}`;
-    el.querySelector('audio').src = s.url;
+    el.innerHTML = '<b></b><small></small><audio controls></audio><a download>Télécharger</a>';
+    el.querySelector('b').textContent = title;
+    el.querySelector('small').textContent = `ACE-Step · ${seconds} s · ${tags.slice(0, 90)}`;
+    el.querySelector('audio').src = file.url;
+    el.querySelector('a').href = file.url;
     $('songs').prepend(el);
   } catch (e) {
     $('err').textContent = e.message;
