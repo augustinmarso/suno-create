@@ -53,9 +53,7 @@
       <button id="advanced" aria-pressed="false">Advanced</button>
     </div>
     <select id="model" aria-label="Modèle">
-      <option value="music_v2_5">music v2.5</option>
-      <option value="music_v2">music v2</option>
-      <option value="music_v1">music v1</option>
+      <option value="ace-step">ACE-Step</option>
     </select>
   </div>
 
@@ -68,7 +66,7 @@
 
   <div id="simpleFields">
     <div class="box">
-      <textarea id="prompt" rows="6" placeholder="Décris la chanson que tu veux : style, ambiance, voix, sujet…"></textarea>
+      <textarea id="prompt" rows="6" placeholder="Décris le morceau : style, tempo, instruments, ambiance… (pour du chant, écris tes paroles en Advanced)"></textarea>
     </div>
   </div>
 
@@ -80,7 +78,7 @@
 
   <div class="opts">
     <label><input id="instrumental" type="checkbox"> Instrumental</label>
-    <label>Durée <input id="seconds" type="number" min="3" max="600" value="60"> s</label>
+    <label>Durée <input id="seconds" type="number" min="3" max="240" value="30"> s</label>
   </div>
 
   <button id="create" class="create" disabled>Create</button>
@@ -104,9 +102,8 @@ function setMode(m) {
 
 // Create s'active dès qu'il y a de quoi composer, comme chez Suno
 function refresh() {
-  const ready = mode === 'simple'
-    ? $('prompt').value.trim()
-    : $('style').value.trim() || ($('lyrics').value.trim() && !$('instrumental').checked) || $('instrumental').checked;
+  // ACE-Step a toujours besoin d'un style
+  const ready = mode === 'simple' ? $('prompt').value.trim() : $('style').value.trim();
   $('create').disabled = !ready;
 }
 
@@ -116,7 +113,7 @@ $('advanced').onclick = () => setMode('advanced');
 
 $('create').onclick = async () => {
   const btn = $('create');
-  btn.disabled = true; btn.textContent = 'Création…'; $('err').textContent = '';
+  btn.disabled = true; btn.textContent = 'Création… (1 à 3 min)'; $('err').textContent = '';
   try {
     const r = await fetch('/api/create', {
       method: 'POST', headers: { 'content-type': 'application/json' },
