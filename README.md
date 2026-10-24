@@ -10,8 +10,9 @@ Panneau « Create » inspiré de Suno (modes Simple et Advanced), qui génère d
 - Durée de 3 à 240 s. Comptez 20 s à 3 min par morceau selon l'affluence sur le Space.
 
 Page statique d'un seul fichier (`index.html`) : le navigateur appelle directement le Space avec
-`@gradio/client`. Aucun serveur ni clé d'API. Le quota GPU gratuit de Hugging Face peut être épuisé
-aux heures chargées : réessayer plus tard.
+`@gradio/client`. Aucun serveur.
+Chaque morceau réserve 60 s de GPU : le quota anonyme de Hugging Face s’épuise vite. Avec un jeton
+Hugging Face gratuit (« Read »), collé dans la page, le quota est bien plus large ; il reste dans le navigateur.
 
 ## En local
 

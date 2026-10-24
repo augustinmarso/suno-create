@@ -37,6 +37,11 @@
   .song small { color:var(--muted); }
   .song audio { width:100%; }
   .song a { color:var(--muted); font-size:13px; }
+  .token { color:var(--muted); margin:0 2px 18px; font-size:14px; }
+  .token summary { cursor:pointer; }
+  .token p { margin:8px 0; }
+  .token a { color:var(--text); }
+  .token input { width:100%; background:var(--field); border:0; color:var(--text); border-radius:10px; padding:10px 12px; font:inherit; }
   [hidden] { display:none !important; }
   :focus-visible { outline:2px solid #8ab4ff; outline-offset:2px; }
 </style>
@@ -82,6 +87,14 @@
     <label>Durée <input id="seconds" type="number" min="3" max="240" value="30"> s</label>
   </div>
 
+  <details class="token">
+    <summary>Jeton Hugging Face (plus de quota)</summary>
+    <p>Sans jeton, le quota GPU gratuit est vite épuisé. Crée un jeton « Read » gratuit sur
+      <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener">huggingface.co/settings/tokens</a>
+      et colle-le ici. Il reste dans ton navigateur, uniquement envoyé à Hugging Face.</p>
+    <input id="hfToken" type="password" autocomplete="off" placeholder="hf_…" aria-label="Jeton Hugging Face">
+  </details>
+
   <button id="create" class="create" disabled>Create</button>
   <p id="err" class="err" role="status"></p>
 
@@ -93,10 +106,24 @@
 import { Client } from 'https://cdn.jsdelivr.net/npm/@gradio/client@2.7.1/dist/browser.js';
 
 const SPACE = 'ACE-Step/ACE-Step';
-let space; // connexion au Space réutilisée entre les créations
-const connect = () => (space ||= Client.connect(SPACE).catch(e => { space = null; throw e; }));
-
 const $ = id => document.getElementById(id);
+
+// Jeton du visiteur : gardé dans son navigateur seulement, il donne un quota GPU bien plus large que l'anonyme.
+const store = { get: k => { try { return localStorage.getItem(k) || ''; } catch { return ''; } },
+                set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
+$('hfToken').value = store.get('hf_token');
+if (!$('hfToken').value) $('hfToken').closest('details').open = true;
+
+let space, spaceToken; // connexion au Space réutilisée tant que le jeton ne change pas
+function connect() {
+  const token = $('hfToken').value.trim();
+  if (!space || token !== spaceToken) {
+    spaceToken = token;
+    space = Client.connect(SPACE, token ? { hf_token: token } : {}).catch(e => { space = null; throw e; });
+  }
+  return space;
+}
+$('hfToken').addEventListener('change', () => store.set('hf_token', $('hfToken').value.trim()));
 let mode = 'simple';
 
 function setMode(m) {
@@ -136,7 +163,14 @@ $('create').onclick = async () => {
       file = result.data[0];
     } catch (e) {
       // quota GPU gratuit épuisé, Space en veille ou surchargé : le message de Gradio le dit
-      throw new Error(`ACE-Step : ${e.message || e.title || 'génération impossible, réessaie dans un moment.'}`);
+      const msg = e.message || e.title || 'génération impossible, réessaie dans un moment.';
+      if (/quota/i.test(msg)) {
+        $('hfToken').closest('details').open = true;
+        throw new Error($('hfToken').value.trim()
+          ? 'Quota GPU épuisé pour ce jeton : réessaie plus tard (il se recharge au fil de la journée).'
+          : 'Quota GPU gratuit épuisé. Ajoute ton jeton Hugging Face ci-dessus pour continuer.');
+      }
+      throw new Error(`ACE-Step : ${msg}`);
     }
 
     const title = $('title').value.trim() || tags.split(/[.,\n]/)[0].slice(0, 40);
