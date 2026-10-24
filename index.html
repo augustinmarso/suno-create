@@ -89,9 +89,11 @@
 
   <details class="token">
     <summary>Jeton Hugging Face (plus de quota)</summary>
-    <p>Sans jeton, le quota GPU gratuit est vite épuisé. Crée un jeton « Read » gratuit sur
-      <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener">huggingface.co/settings/tokens</a>
-      et colle-le ici. Il reste dans ton navigateur, uniquement envoyé à Hugging Face.</p>
+    <p>Sans jeton, le quota GPU gratuit est vite épuisé. Crée sur
+      <a href="https://huggingface.co/settings/tokens/new?tokenType=fineGrained" target="_blank" rel="noopener">huggingface.co/settings/tokens</a>
+      un jeton <b>« Fine-grained » sans aucune permission cochée</b> (il suffit pour le quota) et colle-le ici.
+      Il est gardé dans ton navigateur et envoyé au Space ACE-Step, dont le code est géré par un tiers :
+      n'utilise jamais un jeton qui donne accès à tes dépôts.</p>
     <input id="hfToken" type="password" autocomplete="off" placeholder="hf_…" aria-label="Jeton Hugging Face">
   </details>
 

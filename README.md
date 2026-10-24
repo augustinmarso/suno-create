@@ -12,7 +12,8 @@ Panneau « Create » inspiré de Suno (modes Simple et Advanced), qui génère d
 Page statique d'un seul fichier (`index.html`) : le navigateur appelle directement le Space avec
 `@gradio/client`. Aucun serveur.
 Chaque morceau réserve 60 s de GPU : le quota anonyme de Hugging Face s’épuise vite. Avec un jeton
-Hugging Face gratuit (« Read »), collé dans la page, le quota est bien plus large ; il reste dans le navigateur.
+Hugging Face « Fine-grained » sans aucune permission, collé dans la page, le quota est bien plus large.
+Le jeton est gardé dans le navigateur et envoyé au Space ACE-Step (code tiers) : jamais de jeton à droits.
 
 ## En local
 
